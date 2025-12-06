@@ -8,14 +8,20 @@ import (
 	"github.com/TechBowl-japan/go-stations/service"
 )
 
-func NewRouter(todoDB *sql.DB) *http.ServeMux {
-	// register routes
+// NewRouter はエンドポイントを登録して http.Handler を返す
+func NewRouter(todoDB *sql.DB) http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/healthz", handler.NewHealthzHandler())
 
-	// TODO handlers
-	todoSvc := service.NewTODOService(todoDB)
-	mux.Handle("/todos", handler.NewTODOHandler(todoSvc))
+	// 例: /health にアクセスすると "ok" を返す
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+
+	todoService := service.NewTODOService(todoDB)
+	todoHandler := handler.NewTODOHandler(todoService)
+	// 例: /todos にアクセスすると TodoHandler が処理する
+	mux.HandleFunc("/todos/", todoHandler.ServeHTTP)
 
 	return mux
 }

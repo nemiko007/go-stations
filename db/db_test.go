@@ -14,19 +14,15 @@ func TestNewDB(t *testing.T) {
 
 	cases := map[string]struct {
 		path string
-		err  error
+		want sqlite3.ErrNoExtended
 	}{
-		"Normal":                {path: "../.sqlite3/db_test.db", err: nil},
-		"Directory not created": {path: "../.nothing/db_test.db", err: sqlite3.ErrCantOpenFullPath},
+		"Normal":                {path: "../.sqlite3/db_test.db"},
+		"Directory not created": {path: "../.nothing/db_test.db", want: sqlite3.ErrCantOpenFullPath},
 	}
 
 	t.Cleanup(func() {
-		for _, c := range cases {
-			if c.err == nil {
-				if err := os.Remove(c.path); err != nil {
-					t.Error("failed to cleanup testdata, err =", err)
-				}
-			}
+		if err := os.Remove(cases["Normal"].path); err != nil && !os.IsNotExist(err) {
+			t.Error("failed to cleanup testdata, err =", err)
 		}
 	})
 
@@ -36,18 +32,19 @@ func TestNewDB(t *testing.T) {
 			t.Parallel()
 
 			dbConn, err := db.NewDB(c.path)
-			if err != nil {
-				var sqliteErr sqlite3.Error
-				if errors.As(err, &sqliteErr) {
-					if sqliteErr.Code != c.err.(sqlite3.Error).Code {
-						t.Errorf("unexpected sqlite error code, got = %d, want = %d", sqliteErr.Code, c.err.(sqlite3.Error).Code)
-					}
-				} else if c.err == nil {
-					t.Errorf("unexpected error: %v", err)
+			if c.want == 0 { // エラーを期待しないケース
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
 				}
+				defer dbConn.Close()
 				return
 			}
-			defer dbConn.Close()
+
+			var sqliteErr sqlite3.Error
+			if !errors.As(err, &sqliteErr) || sqliteErr.ExtendedCode != c.want {
+				t.Errorf("unexpected error, got = %v, want sqlite extended error code %d", err, c.want)
+				return
+			}
 		})
 	}
 }

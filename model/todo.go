@@ -25,7 +25,9 @@ type (
 	// A ReadTODORequest expresses ...
 	ReadTODORequest struct{}
 	// A ReadTODOResponse expresses ...
-	ReadTODOResponse struct{}
+	ReadTODOResponse struct {
+		TODOs []*TODO `json:"todos"`
+	}
 
 	// A UpdateTODORequest expresses ...
 	UpdateTODORequest struct {
@@ -39,7 +41,9 @@ type (
 	}
 
 	// A DeleteTODORequest expresses ...
-	DeleteTODORequest struct{}
+	DeleteTODORequest struct {
+		IDs []int64 `json:"ids"`
+	}
 	// A DeleteTODOResponse expresses ...
 	DeleteTODOResponse struct{}
 )
