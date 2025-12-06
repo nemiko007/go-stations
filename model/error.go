@@ -1,9 +1,8 @@
 package model
 
-// ErrNotFound is returned when a requested resource is not found.
+// ErrNotFound は TODO が存在しない場合に返されるエラー
 type ErrNotFound struct{}
 
-// Error implements the error interface for ErrNotFound.
-func (ErrNotFound) Error() string {
-    return "not found"
+func (e *ErrNotFound) Error() string {
+	return "todo not found"
 }
