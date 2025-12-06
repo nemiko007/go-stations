@@ -35,12 +35,19 @@ func TestNewDB(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			_, err := db.NewDB(c.path)
+			dbConn, err := db.NewDB(c.path)
 			if err != nil {
-				if errors.Is(c.err, err) {
-					t.Errorf("unexpected value, given = %s, expected = %s\n", err, c.err)
+				var sqliteErr sqlite3.Error
+				if errors.As(err, &sqliteErr) {
+					if sqliteErr.Code != c.err.(sqlite3.Error).Code {
+						t.Errorf("unexpected sqlite error code, got = %d, want = %d", sqliteErr.Code, c.err.(sqlite3.Error).Code)
+					}
+				} else if c.err == nil {
+					t.Errorf("unexpected error: %v", err)
 				}
+				return
 			}
+			defer dbConn.Close()
 		})
 	}
 }
