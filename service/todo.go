@@ -26,12 +26,6 @@ func NewTODOService(db *sql.DB) *TODOService {
 	}
 }
 
-type ErrNotFound struct{}
-
-func (e *ErrNotFound) Error() string {
-	return "todo not found"
-}
-
 const (
 	// TODO を更新する SQL
 	updateTODOQuery     = `UPDATE todos SET subject = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
@@ -114,9 +108,6 @@ func (s *TODOService) ReadTODO(ctx context.Context, limit, offset int64) ([]*mod
 }
 
 func (s *TODOService) DeleteTODO(ctx context.Context, ids []int64) error {
-	if len(ids) == 0 {
-		return &model.ErrNotFound{}
-	}
 	placeholders := make([]string, len(ids))
 	args := make([]interface{}, len(ids))
 	for i, id := range ids {
