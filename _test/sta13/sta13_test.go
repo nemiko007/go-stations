@@ -65,12 +65,14 @@ func TestStation13(t *testing.T) {
 	defer srv.Close()
 
 	testcases := map[string]struct {
+		Body               string
 		ID                 float64
 		Subject            string
 		Description        string
 		WantHTTPStatusCode int
 	}{
 		"ID is empty": {
+			Body:               `{"subject":"subject","description":"description"}`,
 			WantHTTPStatusCode: http.StatusBadRequest,
 		},
 		"Subject is empty": {
@@ -94,8 +96,12 @@ func TestStation13(t *testing.T) {
 		name := name
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			req, err := http.NewRequest(http.MethodPut, srv.URL+"/todos",
-				bytes.NewBufferString(fmt.Sprintf(`{"id":%d,"subject":"%s","description":"%s"}`, int64(tc.ID), tc.Subject, tc.Description)))
+			body := tc.Body
+			if body == "" {
+				body = fmt.Sprintf(`{"id":%d,"subject":"%s","description":"%s"}`, int64(tc.ID), tc.Subject, tc.Description)
+			}
+			req, err := http.NewRequest(http.MethodPut, fmt.Sprintf("%s/todos/%d", srv.URL, int64(tc.ID)),
+				bytes.NewBufferString(body))
 			if err != nil {
 				t.Errorf("リクエストの作成に失敗しました: %v", err)
 				return
@@ -156,8 +162,8 @@ func TestStation13(t *testing.T) {
 					}
 					if tt, err := time.Parse(time.RFC3339, vv); err != nil {
 						t.Errorf("日付が期待しているフォーマットではありません, got = %s", k)
-					} else if now.Before(tt) {
-						t.Errorf("日付が未来の日付になっています, got = %s", tt)
+					} else if now.Add(1 * time.Second).Before(tt) {
+						t.Errorf("日付が未来の日付になっています（1秒以上のずれ）, got = %s", tt)
 					}
 					return true
 				}

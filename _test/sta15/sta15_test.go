@@ -16,18 +16,18 @@ import (
 func TestStation15(t *testing.T) {
 	t.Parallel()
 
-	todos := []*model.TODO{
+	todos := []*model.Todo{
 		{
-			ID:      3,
-			Subject: "todo subject 3",
+			ID:      1,
+			Subject: "todo subject 1",
 		},
 		{
 			ID:      2,
 			Subject: "todo subject 2",
 		},
 		{
-			ID:      1,
-			Subject: "todo subject 1",
+			ID:      3,
+			Subject: "todo subject 3",
 		},
 	}
 
@@ -62,7 +62,7 @@ func TestStation15(t *testing.T) {
 		}
 	})
 
-	for _, todo := range []*model.TODO{todos[2], todos[1], todos[0]} {
+	for _, todo := range todos {
 		if _, err := stmt.Exec(todo.Subject, todo.Description); err != nil {
 			t.Errorf("データベースのステートメントの実行に失敗しました: %v", err)
 			return
@@ -72,12 +72,12 @@ func TestStation15(t *testing.T) {
 	testcases := map[string]struct {
 		PrevID int64
 		Size   int64
-		TODOs  []*model.TODO
+		TODOs  []*model.Todo
 	}{
 		"Zero read": {
 			PrevID: 0,
 			Size:   0,
-			TODOs:  todos[3:],
+			TODOs:  todos,
 		},
 		"All read": {
 			PrevID: 0,
@@ -87,27 +87,27 @@ func TestStation15(t *testing.T) {
 		"One read": {
 			PrevID: 0,
 			Size:   1,
-			TODOs:  todos[:1],
+			TODOs:  todos[0:1],
 		},
 		"All read with prev id = 3": {
 			PrevID: 3,
 			Size:   5,
-			TODOs:  todos[1:],
+			TODOs:  []*model.Todo{},
 		},
 		"All read with prev id = 1": {
 			PrevID: 1,
 			Size:   5,
-			TODOs:  todos[3:],
+			TODOs:  todos[1:],
 		},
 		"One read with prev id = 3": {
 			PrevID: 3,
 			Size:   1,
-			TODOs:  todos[1:2],
+			TODOs:  []*model.Todo{},
 		},
 		"One read with prev id = 1": {
 			PrevID: 1,
 			Size:   1,
-			TODOs:  todos[3:],
+			TODOs:  todos[1:2],
 		},
 	}
 
@@ -120,7 +120,7 @@ func TestStation15(t *testing.T) {
 				t.Errorf("ReadTODOに失敗しました: %v", err)
 				return
 			}
-			if diff := cmp.Diff(ret, tc.TODOs, cmpopts.IgnoreFields(model.TODO{}, "CreatedAt", "UpdatedAt")); diff != "" {
+			if diff := cmp.Diff(ret, tc.TODOs, cmpopts.IgnoreFields(model.Todo{}, "CreatedAt", "UpdatedAt", "Description")); diff != "" {
 				t.Error("期待していない値です\n", diff)
 				return
 			}

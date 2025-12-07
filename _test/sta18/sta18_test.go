@@ -12,20 +12,18 @@ import (
 )
 
 func TestStation18(t *testing.T) {
-	t.Parallel()
-
-	todos := []*model.TODO{
+	todos := []*model.Todo{
 		{
-			ID:      3,
-			Subject: "todo subject 3",
+			ID:      1,
+			Subject: "todo subject 1",
 		},
 		{
 			ID:      2,
 			Subject: "todo subject 2",
 		},
 		{
-			ID:      1,
-			Subject: "todo subject 1",
+			ID:      3,
+			Subject: "todo subject 3",
 		},
 	}
 
@@ -60,7 +58,7 @@ func TestStation18(t *testing.T) {
 		}
 	})
 
-	for _, todo := range []*model.TODO{todos[2], todos[1], todos[0]} {
+	for _, todo := range todos {
 		if _, err = stmt.Exec(todo.Subject, todo.Description); err != nil {
 			t.Errorf("データベースのステートメントの実行に失敗しました: %v", err)
 			return
@@ -89,8 +87,8 @@ func TestStation18(t *testing.T) {
 		name := name
 		tc := tc
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
+			// NOTE: DBを各テストで共有しているため、Parallelを外して逐次実行する
+			// t.Parallel()
 			err := service.NewTODOService(todoDB).DeleteTODO(context.Background(), tc.IDs)
 
 			switch tc.WantError {

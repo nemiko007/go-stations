@@ -3,9 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"errors"
 	"net/http"
-	"path"
 	"strconv"
 
 	"github.com/TechBowl-japan/go-stations/model"
@@ -34,12 +33,12 @@ func (h *TODOHandler) Create(ctx context.Context, req *model.CreateTODORequest) 
 }
 
 // Read handles the endpoint that reads the TODOs.
-func (h *TODOHandler) Read(ctx context.Context, limit, offset int64) (*model.ReadTODOResponse, error) {
-	todos, err := h.svc.ReadTODO(ctx, limit, offset)
+func (h *TODOHandler) Read(ctx context.Context, req *model.ReadTODORequest) (*model.ReadTODOResponse, error) {
+	todos, err := h.svc.ReadTODO(ctx, req.PrevID, req.Size)
 	if err != nil {
 		return nil, err
 	}
-	return &model.ReadTODOResponse{TODOs: todos}, nil
+	return &model.ReadTODOResponse{Todos: todos}, nil
 }
 
 // Update handles the endpoint that updates the TODO.
@@ -60,99 +59,125 @@ func (h *TODOHandler) Delete(ctx context.Context, req *model.DeleteTODORequest) 
 	return &model.DeleteTODOResponse{}, nil
 }
 
+func (h *TODOHandler) renderError(w http.ResponseWriter, message string, code int) {
+	http.Error(w, message, code)
+}
+
 // ServeHTTP implements http.Handler to accept HTTP requests for TODO endpoints.
 func (h *TODOHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	switch r.Method {
 	case http.MethodGet:
-		limit, _ := strconv.ParseInt(r.URL.Query().Get("limit"), 10, 64)
-		offset, _ := strconv.ParseInt(r.URL.Query().Get("offset"), 10, 64)
+		var req model.ReadTODORequest
+		prevIDStr := r.URL.Query().Get("prev_id")
+		if prevIDStr != "" {
+			prevID, err := strconv.ParseInt(prevIDStr, 10, 64)
+			if err != nil {
+				h.renderError(w, "invalid prev_id", http.StatusBadRequest)
+				return
+			}
+			req.PrevID = prevID
+		}
+		sizeStr := r.URL.Query().Get("size")
+		if sizeStr != "" {
+			size, err := strconv.ParseInt(sizeStr, 10, 64)
+			if err != nil {
+				h.renderError(w, "invalid size", http.StatusBadRequest)
+				return
+			}
+			req.Size = size
+		}
 
-		resp, err := h.Read(ctx, limit, offset)
+		resp, err := h.Read(ctx, &req)
 		if err != nil {
-			log.Println(err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			h.renderError(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			log.Println(err)
-		}
+		_ = json.NewEncoder(w).Encode(resp)
 
 	case http.MethodPost:
 		var req model.CreateTODORequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
+			h.renderError(w, "bad request", http.StatusBadRequest)
 			return
 		}
 
 		if req.Subject == "" {
-			http.Error(w, "subject is required", http.StatusBadRequest)
+			h.renderError(w, "subject is required", http.StatusBadRequest)
 			return
 		}
 
 		resp, err := h.Create(ctx, &req)
 		if err != nil {
-			log.Println(err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			h.renderError(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			log.Println(err)
-		}
+		_ = json.NewEncoder(w).Encode(resp)
 
 	case http.MethodPut:
 		var req model.UpdateTODORequest
-		id, err := strconv.ParseInt(path.Base(r.URL.Path), 10, 64)
-		if err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			h.renderError(w, "bad request", http.StatusBadRequest)
 			return
 		}
-		req.ID = int(id)
 
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
+		if req.ID == 0 {
+			h.renderError(w, "id is required", http.StatusBadRequest)
 			return
 		}
 
 		if req.Subject == "" {
-			http.Error(w, "subject is required", http.StatusBadRequest)
+			h.renderError(w, "subject is required", http.StatusBadRequest)
 			return
 		}
 
 		resp, err := h.Update(ctx, &req)
 		if err != nil {
-			log.Println(err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			var errNotFound *model.ErrNotFound
+			if errors.As(err, &errNotFound) {
+				h.renderError(w, "not found", http.StatusNotFound)
+				return
+			}
+			h.renderError(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			log.Println(err)
-		}
+		_ = json.NewEncoder(w).Encode(resp)
 
 	case http.MethodDelete:
 		var req model.DeleteTODORequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
+			h.renderError(w, "bad request", http.StatusBadRequest)
 			return
 		}
 
-		if _, err := h.Delete(ctx, &req); err != nil {
-			log.Println(err)
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+		if len(req.IDs) == 0 {
+			h.renderError(w, "ids must not be empty", http.StatusBadRequest)
 			return
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		resp, err := h.Delete(ctx, &req)
+		if err != nil {
+			var errNotFound *model.ErrNotFound
+			if errors.As(err, &errNotFound) {
+				h.renderError(w, "not found", http.StatusNotFound)
+				return
+			}
+			h.renderError(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(resp)
 
 	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		h.renderError(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }

@@ -31,9 +31,9 @@ func TestStation14(t *testing.T) {
 		},
 		"CreateTODOResponse has TODO field": {
 			Target:       model.ReadTODOResponse{},
-			FieldName:    "TODOs",
+			FieldName:    "Todos",
 			WantKinds:    []reflect.Kind{reflect.Slice},
-			WantTypes:    []reflect.Type{reflect.TypeOf([]model.TODO{}), reflect.TypeOf([]*model.TODO{})},
+			WantTypes:    []reflect.Type{reflect.TypeOf([]model.Todo{}), reflect.TypeOf([]*model.Todo{})},
 			JSONTagValue: "todos",
 		},
 	}

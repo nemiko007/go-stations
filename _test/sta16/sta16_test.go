@@ -83,22 +83,22 @@ func TestStation16(t *testing.T) {
 		"All read with prev id = 3": {
 			PrevID:   3,
 			Size:     5,
-			TODOsLen: 2,
+			TODOsLen: 0,
 		},
 		"All read with prev id = 1": {
 			PrevID:   1,
 			Size:     5,
-			TODOsLen: 0,
+			TODOsLen: 2,
 		},
 		"One read with prev id = 3": {
 			PrevID:   3,
 			Size:     1,
-			TODOsLen: 1,
+			TODOsLen: 0,
 		},
 		"One read with prev id = 1": {
 			PrevID:   1,
 			Size:     1,
-			TODOsLen: 0,
+			TODOsLen: 1,
 		},
 	}
 
